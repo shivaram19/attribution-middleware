@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: attribution-postgres
+    environment:
+      POSTGRES_DB: attribution_db
+      POSTGRES_USER: attribution
+      POSTGRES_PASSWORD: attribution_dev
+    ports:
+      - "5440:5432"
+    volumes:
+      - attribution_pgdata:/var/lib/postgresql/data
+      # Schema init script (runs once on first boot of the volume)
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U attribution -d attribution_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: attribution-redis
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - attribution_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  attribution_pgdata:
+  attribution_redisdata:
